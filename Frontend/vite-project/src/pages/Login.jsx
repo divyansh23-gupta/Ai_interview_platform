@@ -1,14 +1,17 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { GoogleLogin } from "@react-oauth/google";
 
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const navigate = useNavigate();
 
+  // Existing email/password login
   const handleLogin = async (e) => {
     e.preventDefault();
 
@@ -23,11 +26,10 @@ function Login() {
         },
         body: JSON.stringify({
           email: email.trim(),
-          password: password,
+          password,
         }),
       });
 
-      // Read the response as text first, so both text and JSON work.
       const text = await response.text();
 
       let data;
@@ -52,10 +54,7 @@ function Login() {
         return;
       }
 
-      // Store the JWT for subsequent authenticated requests.
       localStorage.setItem("token", data.token);
-
-      // Navigate after successful login.
       navigate("/profile");
     } catch (err) {
       console.error("Login request failed:", err);
@@ -63,6 +62,63 @@ function Login() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Google login
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setError("");
+
+    const credential = credentialResponse.credential;
+
+    if (!credential) {
+      setError("Google did not provide a credential. Please try again.");
+      return;
+    }
+
+    setGoogleLoading(true);
+
+    try {
+      const response = await fetch("http://localhost:4000/auth/google", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          credential,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.message || "Google login failed. Please try again.");
+        return;
+      }
+
+      if (!data.token) {
+        setError("Google login response did not contain an authentication token.");
+        return;
+      }
+
+      // Store the application's JWT, not the Google credential.
+      localStorage.setItem("token", data.token);
+
+      // Keep the returned user details available for the profile page.
+      if (data.user) {
+        localStorage.setItem("user", JSON.stringify(data.user));
+      }
+
+      navigate("/profile");
+    } catch (err) {
+      console.error("Google login request failed:", err);
+      setError("Unable to connect to the server. Please try again.");
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const handleGoogleError = () => {
+    setError("Google sign-in was unsuccessful. Please try again.");
   };
 
   return (
@@ -104,10 +160,9 @@ function Login() {
             </p>
           </div>
 
-          {/* Login Form */}
+          {/* Email and Password Login */}
           <form className="space-y-5" onSubmit={handleLogin}>
 
-            {/* Email */}
             <div>
               <label className="block text-sm text-gray-300 mb-2">
                 Email Address
@@ -124,7 +179,6 @@ function Login() {
               />
             </div>
 
-            {/* Password */}
             <div>
               <div className="flex justify-between items-center mb-2">
                 <label className="text-sm text-gray-300">
@@ -153,17 +207,15 @@ function Login() {
               />
             </div>
 
-            {/* Error Message */}
             {error && (
               <p className="text-red-400 text-sm" role="alert">
                 {error}
               </p>
             )}
 
-            {/* Login Button */}
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || googleLoading}
               className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-lg transition shadow-lg shadow-red-600/20"
             >
               {loading ? "Logging in..." : "Login"}
@@ -182,19 +234,26 @@ function Login() {
             <div className="h-px bg-gray-800 flex-1" />
           </div>
 
-          {/* Google */}
-          <button
-            type="button"
-            className="w-full border border-gray-700 hover:border-gray-500 bg-[#080808] py-3 rounded-lg flex items-center justify-center gap-3 transition"
-          >
-            <span className="font-bold text-lg">
-              G
-            </span>
+          {/* Real Google Login Button */}
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-full flex justify-center">
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleError}
+                text="continue_with"
+                shape="rectangular"
+                theme="outline"
+                size="large"
+                width="320"
+              />
+            </div>
 
-            <span className="text-sm text-gray-300">
-              Continue with Google
-            </span>
-          </button>
+            {googleLoading && (
+              <p className="text-gray-400 text-sm">
+                Signing in with Google...
+              </p>
+            )}
+          </div>
 
           {/* Signup Link */}
           <p className="text-center text-gray-500 text-sm mt-6">

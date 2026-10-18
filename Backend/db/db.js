@@ -25,6 +25,10 @@ let UserSchema = new mongoose.Schema({
             return !this.googleId;
         }
     },
+    profilePicture: {
+            type: String,
+            default: "",
+    },
 
     role: {
         type: String,

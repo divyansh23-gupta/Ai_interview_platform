@@ -52,7 +52,7 @@ router.post("/google", async (req, res) => {
         userId: user._id,
         email: user.email,
       },
-      "hehehehehehehehehe",
+      "ai_interview_secret",
      
     );
 
