@@ -24,6 +24,7 @@ mongoose.connect("mongodb://127.0.0.1:27017/Ai_interview_platform")
 app.use(require("./routes/signup.js"));
 app.use(require("./routes/login.js"));
 app.use("/auth", require("./routes/authRoutes.js"));
+app.use(require("./routes/interview.js"));
 
 
 app.get("/profile-test", auth, (req, res) => {
